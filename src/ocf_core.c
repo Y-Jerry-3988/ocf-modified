@@ -234,12 +234,12 @@ static inline ocf_req_cache_mode_t _ocf_core_req_resolve_fast_mode(
 	return ocf_req_cache_mode_fast;
 }
 
-static int ocf_core_submit_io_fast(struct ocf_request *req, ocf_cache_t cache)
+static int ocf_core_submit_io_fast(struct ocf_request *req, ocf_cache_t cache) // 进入这里的是read req和block阻塞的write req，非阻塞write req会直接进入backend
 {
 	ocf_req_cache_mode_t original_mode, resolved_mode;
 	int ret;
 
-	if (req->cache_mode == ocf_req_cache_mode_pt)
+	if (req->cache_mode == ocf_req_cache_mode_pt) //非阻塞write req会直接进入backend
 		return OCF_FAST_PATH_NO;
 
 	resolved_mode = _ocf_core_req_resolve_fast_mode(cache, req);
@@ -249,7 +249,7 @@ static int ocf_core_submit_io_fast(struct ocf_request *req, ocf_cache_t cache)
 	original_mode = req->cache_mode;
 	req->cache_mode = resolved_mode;
 
-	ret = ocf_engine_hndl_fast_req(req);
+	ret = ocf_engine_hndl_fast_req(req); // 二次判断read req和block阻塞的write req是否进入cache
 	if (ret == OCF_FAST_PATH_NO)
 		req->cache_mode = original_mode;
 
@@ -293,9 +293,9 @@ static void ocf_core_volume_submit_io(ocf_io_t io)
 	if (ret)
 		goto err;
 
-	req->part_id = ocf_user_part_class2id(cache, req->io.io_class);
+	req->part_id = ocf_user_part_class2id(cache, req->io.io_class); // 默认io_class为0
 
-	ocf_resolve_effective_cache_mode(cache, core, req);
+	ocf_resolve_effective_cache_mode(cache, core, req); // 选择适合req的cache_mode
 
 	ocf_core_update_stats(core, io);
 
@@ -303,7 +303,7 @@ static void ocf_core_volume_submit_io(ocf_io_t io)
 	 * sequential cutoff info */
 	ocf_req_get(req);
 
-	if (ocf_core_submit_io_fast(req, cache) == OCF_FAST_PATH_YES) {
+	if (ocf_core_submit_io_fast(req, cache) == OCF_FAST_PATH_YES) { // 在这里二次判定是否让IO进入cache（Fast Path）,主要是判定read req
 		ocf_core_seq_cutoff_update(core, req);
 		ocf_req_put(req);
 		return;

@@ -11,6 +11,7 @@
 #include "ocf_priv.h"
 #include "ocf/ocf_debug.h"
 #include "utils/utils_cache_line.h"
+#include "ocf/vbdev_ocf.h"
 
 #define SEQ_CUTOFF_FULL_MARGIN 512
 
@@ -202,6 +203,13 @@ bool ocf_core_seq_cutoff_check(ocf_core_t core, struct ocf_request *req)
 
 		case ocf_seq_cutoff_policy_never:
 			return false;
+		/* Add seq_cutoff policy: whether backend ssd blocked? */
+		case ocf_seq_cutoff_policy_backend_blocked:
+			struct spdk_bdev_io *bdev_io = (struct spdk_bdev_io *)req->io.priv1;
+			if ((req->rw == OCF_WRITE) && vbdev_ocf_io_is_blocked(bdev_io))
+				return false;
+			break;
+		/* End of modification */
 		default:
 			ENV_WARN(true, "Invalid sequential cutoff policy!");
 			return false;

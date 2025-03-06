@@ -152,22 +152,22 @@ void ocf_resolve_effective_cache_mode(ocf_cache_t cache,
 {
 	ocf_cache_mode_t cache_mode;
 
-	if (ocf_fallback_pt_is_on(cache)){
+	if (ocf_fallback_pt_is_on(cache)){ // 非test模式不会经过这个函数
 		req->cache_mode = ocf_req_cache_mode_pt;
 		return;
 	}
 
-	if (cache->pt_unaligned_io && !ocf_req_is_4k(req->addr, req->bytes)) {
+	if (cache->pt_unaligned_io && !ocf_req_is_4k(req->addr, req->bytes)) { // Use pass-through mode for I/O requests unaligned to 4KiB，当且仅当req不是4K的倍数时，使用pt模式
 		req->cache_mode = ocf_req_cache_mode_pt;
 		return;
 	}
 
-	if (req->core_line_count > cache->conf_meta->cachelines) {
+	if (req->core_line_count > cache->conf_meta->cachelines) { // req自身的core_line_count大于cache的cacheline数量，则使用pt模式
 		req->cache_mode = ocf_req_cache_mode_pt;
 		return;
 	}
 
-	if (ocf_core_seq_cutoff_check(core, req)) {
+	if (ocf_core_seq_cutoff_check(core, req)) { // 判断是否对这个IO使用seq_cutoff，如果满足条件，则使用pt模式，这里使用bdev的status判断
 		req->cache_mode = ocf_req_cache_mode_pt;
 		req->seq_cutoff = 1;
 		return;
@@ -183,7 +183,7 @@ void ocf_resolve_effective_cache_mode(ocf_cache_t cache,
 
 	if (req->rw == OCF_WRITE &&
 	    ocf_req_cache_mode_has_lazy_write(req->cache_mode) &&
-	    ocf_req_set_dirty(req)) {
+	    ocf_req_set_dirty(req)) { // 这一步将req设置为脏的同时，又使得req的cache_mode变为了pt，因为这时候说明req的dirty字段是freeze的，也就是说需要使用write-through模式（cache和core始终同步）
 		req->cache_mode = ocf_req_cache_mode_wt;
 	}
 }
