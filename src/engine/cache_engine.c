@@ -211,7 +211,7 @@ int ocf_engine_hndl_req(struct ocf_request *req)
 	return 0;
 }
 
-int ocf_engine_hndl_fast_req(struct ocf_request *req)
+int ocf_engine_hndl_fast_req(struct ocf_request *req) // fast request入口
 {
 	ocf_req_cb engine_cb;
 	int ret;
