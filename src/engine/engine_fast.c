@@ -110,7 +110,7 @@ int ocf_read_fast(struct ocf_request *req)
 	/* Traverse request to cache if there is hit */
 	ocf_engine_traverse(req);
 
-	hit = ocf_engine_is_hit(req);
+	hit = ocf_engine_is_hit(req); // req hit的情况下不需要修改，因为能且只能从cache中直接读取
 
 	part_has_space = ocf_user_part_has_space(req);
 
@@ -176,7 +176,7 @@ int ocf_write_fast(struct ocf_request *req)
 	/* Traverse request to cache if there is hit */
 	ocf_engine_traverse(req);
 
-	mapped = ocf_engine_is_mapped(req);
+	mapped = ocf_engine_is_mapped(req); // 判定write req是否全被map到cache上，如果全部map了直接写到cache上
 
 	part_has_space = ocf_user_part_has_space(req);
 
@@ -197,7 +197,7 @@ int ocf_write_fast(struct ocf_request *req)
 				OCF_DEBUG_RQ(req, "NO LOCK");
 			} else {
 				/* Lock was acquired can perform IO */
-				ocf_write_wb_do(req);
+				ocf_write_wb_do(req); // 如果全部map了则可以直接将数据写到cache中，但会产生dirty数据，需要后期cleaner进行clean
 			}
 		} else {
 			OCF_DEBUG_RQ(req, "Fast path lock failure");

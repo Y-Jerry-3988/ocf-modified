@@ -112,7 +112,7 @@ static int _ocf_read_generic_do(struct ocf_request *req)
 		 * Need to switch to PT
 		 */
 		OCF_DEBUG_RQ(req, "Switching to PT");
-		ocf_read_pt_do(req);
+		ocf_read_pt_do(req); // 只能从base设备读取
 		return 0;
 	}
 
@@ -120,11 +120,11 @@ static int _ocf_read_generic_do(struct ocf_request *req)
 	ocf_req_get(req);
 
 	if (ocf_engine_is_miss(req)) {
-		if (req->info.dirty_any) {
+		if (req->info.dirty_any) { // req中部分hit，所以只能从base读，且hit的部分有dirty data，就需要先flush req之后再read from base
 			ocf_hb_req_prot_lock_rd(req);
 
 			/* Request is dirty need to clean request */
-			ocf_engine_clean(req);
+			ocf_engine_clean(req); // 这里会无条件触发flush dirty data to base device
 
 			ocf_hb_req_prot_unlock_rd(req);
 
@@ -158,10 +158,10 @@ static int _ocf_read_generic_do(struct ocf_request *req)
 	OCF_DEBUG_RQ(req, "Submit");
 
 	/* Submit IO */
-	if (ocf_engine_is_hit(req))
+	if (ocf_engine_is_hit(req)) // 全部hit且都是最新数据在cache中，直接读取
 		ocf_read_generic_submit_hit(req);
 	else
-		_ocf_read_generic_submit_miss(req);
+		_ocf_read_generic_submit_miss(req); // req完全Miss，或者req中部分hit，但是也没有dirty data，那么需要从base读取，同时backfill到cache
 
 	/* Update statistics */
 	ocf_engine_update_request_stats(req);
@@ -216,7 +216,7 @@ int ocf_read_generic(struct ocf_request *req)
 		}
 	} else {
 		ocf_req_clear(req);
-		req->force_pt = true;
+		req->force_pt = true; // 请求全在base中，且不需要promotion
 		ocf_read_pt(req);
 	}
 

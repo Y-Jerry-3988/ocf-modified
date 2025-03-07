@@ -250,7 +250,7 @@ static int ocf_core_submit_io_fast(struct ocf_request *req, ocf_cache_t cache) /
 	req->cache_mode = resolved_mode;
 
 	ret = ocf_engine_hndl_fast_req(req); // 二次判断read req和block阻塞的write req是否进入cache
-	if (ret == OCF_FAST_PATH_NO)
+	if (ret == OCF_FAST_PATH_NO) // 如果read req没有hit全部或者存在invalid数据，或者write req没有全部map到cache中，则无法走fast path
 		req->cache_mode = original_mode;
 
 	return ret;
@@ -303,7 +303,7 @@ static void ocf_core_volume_submit_io(ocf_io_t io)
 	 * sequential cutoff info */
 	ocf_req_get(req);
 
-	if (ocf_core_submit_io_fast(req, cache) == OCF_FAST_PATH_YES) { // 在这里二次判定是否让IO进入cache（Fast Path）,主要是判定read req
+	if (ocf_core_submit_io_fast(req, cache) == OCF_FAST_PATH_YES) { // 在这里二次判定是否让IO进入cache（Fast Path）,主要是判定read req是否全部hit且没有invalid数据，或者write req是否全部map在cache中
 		ocf_core_seq_cutoff_update(core, req);
 		ocf_req_put(req);
 		return;
@@ -313,7 +313,7 @@ static void ocf_core_volume_submit_io(ocf_io_t io)
 	ocf_req_clear_map(req);
 	ocf_core_seq_cutoff_update(core, req);
 
-	ret = ocf_engine_hndl_req(req);
+	ret = ocf_engine_hndl_req(req); // 到这里都是read req没有全部hit或者存在invalid数据，或者write req没有全部map在cache中
 	if (ret) {
 		dec_counter_if_req_was_dirty(req);
 		goto err;

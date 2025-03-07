@@ -414,7 +414,7 @@ static int lock_clines(struct ocf_request *req)
 	struct ocf_alock *c = ocf_cache_line_concurrency(req->cache);
 	int lock_type = OCF_WRITE;
 
-	if (req->rw == OCF_READ && ocf_engine_is_hit(req))
+	if (req->rw == OCF_READ && ocf_engine_is_hit(req)) // 只有读请求且全部都hit才会只从cache读，否则会有内部IO迁移的写请求
 		lock_type = OCF_READ;
 
 	return lock_type == OCF_WRITE ?
@@ -470,7 +470,7 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	/* check CL status */
 	ocf_engine_lookup(req);
 
-	mapped = ocf_engine_is_mapped(req);
+	mapped = ocf_engine_is_mapped(req); // 读写请求全在cache里
 	if (mapped) {
 		lock = lock_clines(req);
 		if (lock < 0)
@@ -482,7 +482,7 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	}
 
 	/* check if request should promote cachelines */
-	promote = ocf_promotion_req_should_promote(
+	promote = ocf_promotion_req_should_promote( // 请求部分缓存在cache中或者全在base中但是已经达到放在cache中的条件
 			req->cache->promotion_policy, req);
 	if (!promote) {
 		ocf_req_set_mapping_error(req);
@@ -503,7 +503,7 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 		return lock;
 	}
 
-	ocf_prepare_clines_miss(req);
+	ocf_prepare_clines_miss(req); // remap base IO to cache and mark req->alock_rw = OCF_WRITE
 	if (!ocf_req_test_mapping_error(req)) {
 		lock = lock_clines(req);
 		if (lock < 0) {

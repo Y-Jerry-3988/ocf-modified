@@ -94,7 +94,7 @@ void ocf_cleaner_run(ocf_cleaner_t cleaner, ocf_queue_t queue)
 	if (!env_bit_test(ocf_cache_state_running, &cache->cache_state) ||
 			ocf_mngt_cache_is_locked(cache)) {
 		cleaner->end(cleaner, SLEEP_TIME_MS);
-		return;
+		return; // cache running 才清理
 	}
 
 	if (ocf_cache_is_standby(cache)) {
@@ -112,7 +112,7 @@ void ocf_cleaner_run(ocf_cleaner_t cleaner, ocf_queue_t queue)
 		ocf_mngt_cache_unlock(cache);
 		cleaner->end(cleaner, SLEEP_TIME_MS);
 		return;
-	}
+	} // 检查是否有脏数据，有脏数据才清理
 
 	ocf_queue_get(queue);
 	cleaner->io_queue = queue;

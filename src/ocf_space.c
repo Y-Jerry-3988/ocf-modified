@@ -113,7 +113,8 @@ static inline uint32_t ocf_remap_do(struct ocf_request *req)
 
 	/* First attempt to map from freelist */
 	if (ocf_lru_num_free(cache) > 0)
-		remapped = ocf_lru_req_clines(req, &cache->free, remap_cline_no);
+		remapped = ocf_lru_req_clines(req, &cache->free, remap_cline_no); 
+		// 当req全部都在base上要被promote到cache中时会被mark为req->alock_rw = OCF_WRITE
 
 	if (remapped >= remap_cline_no)
 		return remapped;

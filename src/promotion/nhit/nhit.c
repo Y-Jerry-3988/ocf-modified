@@ -229,8 +229,9 @@ bool nhit_req_should_promote(ocf_promotion_policy_t policy,
 	if (occupied_cachelines < OCF_DIV_ROUND_UP(
 			((uint64_t)cfg->trigger_threshold *
 			ocf_metadata_get_cachelines_count(policy->owner)), 100)) {
+		/* 判断是否是写IO，且base设备不阻塞，可以直接写入，而不是无脑判定true进cache */
 		return true;
-	}
+	} // 当cache快满的时候才promote，不然就是always promote, 因此不到满的时候写是直接进cache的
 
 	for (i = 0, core_line = req->core_line_first;
 			core_line <= req->core_line_last; core_line++, i++) {
@@ -244,6 +245,6 @@ bool nhit_req_should_promote(ocf_promotion_policy_t policy,
 
 	/* We don't want to reject even partially hit requests - this way we
 	 * could trigger passthrough and invalidation. Let's let it in! */
-	return result || ocf_engine_mapped_count(req);
+	return result || ocf_engine_mapped_count(req); // 如果已经有部分的core_line已经map了，那么就直接promote，否则就会直接passthrough到底层base造成cache中数据invalidate
 }
 

@@ -222,7 +222,7 @@ int ocf_engine_hndl_fast_req(struct ocf_request *req) // fast request入口
 
 	ocf_req_get(req);
 
-	ret = engine_cb(req);
+	ret = engine_cb(req); // 判定当前的req能不能走fastpath，当且仅当write req且全部map、read req且全部hit没有dirty data才能走fastpath
 
 	if (ret == OCF_FAST_PATH_NO)
 		ocf_req_put(req);

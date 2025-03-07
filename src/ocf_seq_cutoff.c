@@ -312,7 +312,7 @@ void ocf_core_seq_cutoff_update(ocf_core_t core, struct ocf_request *req)
 	bool promote_on_threshold =
 			ocf_core_get_seq_cutoff_promote_on_threshold(core);
 	struct ocf_seq_cutoff_stream *stream;
-	bool promote = false;
+	bool promote = false; // 这里的promote不是指预读取，而是是否让req直接走base
 
 	if (policy == ocf_seq_cutoff_policy_never)
 		return;
