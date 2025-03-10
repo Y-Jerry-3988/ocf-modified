@@ -50,7 +50,7 @@ int ocf_read_pt_do(struct ocf_request *req)
 	if (req->info.dirty_any) {
 		ocf_hb_req_prot_lock_rd(req);
 		/* Need to clean, start it */
-		ocf_engine_clean(req);
+		ocf_engine_clean(req); // 如果有dirty data要首先flush到base device
 		ocf_hb_req_prot_unlock_rd(req);
 
 		/* Do not processing, because first we need to clean request */
@@ -73,7 +73,7 @@ int ocf_read_pt_do(struct ocf_request *req)
 	}
 
 	/* Submit read IO to the core */
-	_ocf_read_pt_submit(req);
+	_ocf_read_pt_submit(req); // 从此入口进入的read req都是保证在base device上有最新数据的，因此直接在base设备上读
 
 	/* Update statistics */
 	ocf_engine_update_block_stats(req);
@@ -111,10 +111,10 @@ int ocf_read_pt(struct ocf_request *req)
 	ocf_engine_traverse(req);
 
 	if (req->seq_cutoff && ocf_engine_is_dirty_all(req) &&
-			!req->force_pt) {
+			!req->force_pt) { // 这里可以排除seq_cutoff情况下允许read req直接走base device但又全是dirty line的情况，显然应该走cache直接读
 		use_cache = true;
 	} else {
-		if (ocf_engine_mapped_count(req)) {
+		if (ocf_engine_mapped_count(req)) { // 这里是为了read_generic中没有promotion或者因为空间不够导致promote没有成功的read req
 			/* There are mapped cache line,
 			 * lock request for READ access
 			 */
@@ -124,7 +124,7 @@ int ocf_read_pt(struct ocf_request *req)
 					req, ocf_engine_on_resume);
 		} else {
 			/* No mapped cache lines, no need to get lock */
-			lock = OCF_LOCK_ACQUIRED;
+			lock = OCF_LOCK_ACQUIRED; // 这里是read数据全在base的情况下，直接走base device
 		}
 	}
 
@@ -132,16 +132,16 @@ int ocf_read_pt(struct ocf_request *req)
 
 	if (use_cache) {
 		/*
-		 * There is dirt HIT, and sequential cut off,
+		 * There is dirty HIT, and sequential cut off,
 		 * because of this force read data from cache
 		 */
 		ocf_req_clear(req);
-		ocf_read_generic(req);
+		ocf_read_generic(req); //因为有dirty data, seq cutoff和bypass走不通，还是只能走cache
 	} else {
 		if (lock >= 0) {
 			if (lock == OCF_LOCK_ACQUIRED) {
 				/* Lock acquired perform read off operations */
-				ocf_read_pt_do(req);
+				ocf_read_pt_do(req); // 从此入口进入的read req可能在cache上还有dirty数据，因此直接在base设备上读之前要先flush
 			} else {
 				/* WR lock was not acquired, need to wait for resume */
 				OCF_DEBUG_RQ(req, "NO LOCK");

@@ -304,7 +304,7 @@ static void ocf_core_volume_submit_io(ocf_io_t io)
 	ocf_req_get(req);
 
 	if (ocf_core_submit_io_fast(req, cache) == OCF_FAST_PATH_YES) { // 在这里二次判定是否让IO进入cache（Fast Path）,主要是判定read req是否全部hit且没有invalid数据，或者write req是否全部map在cache中
-		ocf_core_seq_cutoff_update(core, req);
+		ocf_core_seq_cutoff_update(core, req); // ocf_core_submit_io_fast能走通的只有read req全部hit的，或者write req全部map的，也就是全都在cache中能被处理的
 		ocf_req_put(req);
 		return;
 	}

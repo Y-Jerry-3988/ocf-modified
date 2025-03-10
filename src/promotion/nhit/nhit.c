@@ -10,6 +10,8 @@
 
 #include "nhit.h"
 #include "../ops.h"
+// #include "ocf/vbdev_ocf.h"
+#include "../../ocf_core_status.h"
 
 #define NHIT_MAPPING_RATIO 2
 
@@ -230,6 +232,9 @@ bool nhit_req_should_promote(ocf_promotion_policy_t policy,
 			((uint64_t)cfg->trigger_threshold *
 			ocf_metadata_get_cachelines_count(policy->owner)), 100)) {
 		/* 判断是否是写IO，且base设备不阻塞，可以直接写入，而不是无脑判定true进cache */
+		if ((req->rw == OCF_WRITE) && !vbdev_ocf_io_is_blocked(req))
+			return false;
+		/* End of Modification, 需要再次决策dicision */
 		return true;
 	} // 当cache快满的时候才promote，不然就是always promote, 因此不到满的时候写是直接进cache的
 

@@ -11,10 +11,18 @@
 #include "ocf_priv.h"
 #include "ocf/ocf_debug.h"
 #include "utils/utils_cache_line.h"
-#include "ocf/vbdev_ocf.h"
+// #include "ocf/vbdev_ocf.h"
+#include "../../ocf_core_status.h"
 
 #define SEQ_CUTOFF_FULL_MARGIN 512
+/* Add seq_cut off policy: whether backend ssd blocked? */
+#define REQ_SIZE_THRESHOLD 32 // req超过这个threshold则视为large request，单位是ocf_line_size in KB
 
+static inline bool ocf_req_is_large(struct ocf_request *req)
+{
+	return (req->core_line_count >= REQ_SIZE_THRESHOLD);
+}
+/* End of modification */
 static inline bool ocf_seq_cutoff_is_on(ocf_cache_t cache,
 		struct ocf_request *req)
 {
@@ -197,19 +205,19 @@ bool ocf_core_seq_cutoff_check(ocf_core_t core, struct ocf_request *req)
 		case ocf_seq_cutoff_policy_always:
 			break;
 		case ocf_seq_cutoff_policy_full:
-			if (ocf_seq_cutoff_is_on(cache, req))
+			if (ocf_seq_cutoff_is_on(cache, req)) // 如果cache快满了，只能bypass cache
 				break;
+			/* Add seq_cutoff policy: whether backend ssd blocked? */
+			// 如果cache没有满，那么就要判断IO是否超过某个threshold且写IO是否被阻塞
+			if (ocf_req_is_large(req) && !vbdev_ocf_io_is_blocked(req)) // 如果large IO且bdev没有阻塞，那么可以bypass，此处不用担心read req存在dirty line in cache的问题，后面会有判断
+				break
+			// 上述情况都不满足，只能走cache
+			/* End of modification */
 			return false;
 
 		case ocf_seq_cutoff_policy_never:
 			return false;
-		/* Add seq_cutoff policy: whether backend ssd blocked? */
-		case ocf_seq_cutoff_policy_backend_blocked:
-			struct spdk_bdev_io *bdev_io = (struct spdk_bdev_io *)req->io.priv1;
-			if ((req->rw == OCF_WRITE) && vbdev_ocf_io_is_blocked(bdev_io))
-				return false;
-			break;
-		/* End of modification */
+
 		default:
 			ENV_WARN(true, "Invalid sequential cutoff policy!");
 			return false;

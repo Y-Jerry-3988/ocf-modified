@@ -470,7 +470,7 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	/* check CL status */
 	ocf_engine_lookup(req);
 
-	mapped = ocf_engine_is_mapped(req); // 读写请求全在cache里
+	mapped = ocf_engine_is_mapped(req); // 读写请求全map在cache里
 	if (mapped) {
 		lock = lock_clines(req);
 		if (lock < 0)
@@ -485,7 +485,7 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 	promote = ocf_promotion_req_should_promote( // 请求部分缓存在cache中或者全在base中但是已经达到放在cache中的条件
 			req->cache->promotion_policy, req);
 	if (!promote) {
-		ocf_req_set_mapping_error(req);
+		ocf_req_set_mapping_error(req); // 不需要promote的req
 		ocf_hb_req_prot_unlock_rd(req);
 		return lock;
 	}
@@ -503,8 +503,8 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 		return lock;
 	}
 
-	ocf_prepare_clines_miss(req); // remap base IO to cache and mark req->alock_rw = OCF_WRITE
-	if (!ocf_req_test_mapping_error(req)) {
+	ocf_prepare_clines_miss(req); // remap base IO to cache and mark req->alock_rw = OCF_WRITE，同时把base上的数据purge掉，这一步全在内存中进行而不需要实际在base设备上操作
+	if (!ocf_req_test_mapping_error(req)) { // 如果出现error说明cache中没有足够的空间分配给miss的req了，这时会触发req->info.cleaning_required = true;
 		lock = lock_clines(req);
 		if (lock < 0) {
 			/* Mapping succeeded, but we failed to acquire cacheline lock.
@@ -518,10 +518,10 @@ int ocf_engine_prepare_clines(struct ocf_request *req)
 
 	ocf_hb_req_prot_unlock_wr(req);
 
-	if (ocf_req_is_cleaning_required(req)) {
+	if (ocf_req_is_cleaning_required(req)) { // 因为cache中没有足够空间导致需要先clean cache才能将req中的数据写入cache
 		ocf_lru_clean(req->cache, user_part, req->io_queue,
-				128);
-	}
+				128); // clean cache中的128个cache line，128是超参数
+	}/* 需要更改这里的clean策略来应对特殊情况 */
 
 	return lock;
 }

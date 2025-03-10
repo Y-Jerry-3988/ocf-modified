@@ -75,8 +75,8 @@ static const struct ocf_io_if IO_IFS[OCF_IO_PRIV_MAX_IF] = {
 	},
 	[OCF_IO_PT_IF] = {
 		.cbs = {
-			[OCF_READ] = ocf_read_pt,
-			[OCF_WRITE] = ocf_write_wi,
+			[OCF_READ] = ocf_read_pt, // read req cutoff过来的，没有cache dirty data就能直接读，不行就还是走read_generic
+			[OCF_WRITE] = ocf_write_wi, // write req cutoff过来的，采用write-invalidate模式，将cache里的数据给invalid了然后将数据直接写到base core
 		},
 		.name = "Pass Through",
 	},

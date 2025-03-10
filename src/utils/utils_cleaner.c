@@ -14,6 +14,8 @@
 #include "utils_io.h"
 #include "utils_cache_line.h"
 #include "../ocf_queue_priv.h"
+#include "../ocf_core_status.h"
+#include "../ocf_cache_priv.h"
 
 #define OCF_UTILS_CLEANER_DEBUG 0
 
@@ -591,7 +593,7 @@ static int _ocf_cleaner_fire_cache(struct ocf_request *req)
 	return 0;
 }
 
-static int _ocf_cleaner_check_map(struct ocf_request *req)
+static int _ocf_cleaner_check_map(struct ocf_request *req) // 在checkmap函数中还可以最后检查一遍是否将req flush到core，req->map[i].flush = true才会真正进行flush
 {
 	ocf_core_id_t core_id;
 	uint64_t core_line;
@@ -607,10 +609,13 @@ static int _ocf_cleaner_check_map(struct ocf_request *req)
 		if (core_line != req->map[i].core_line)
 			continue;
 
-		if (!metadata_test_dirty(req->cache, req->map[i].coll_idx))
+		if (!metadata_test_dirty(req->cache, req->map[i].coll_idx)) // flush最终只关注dirty data
 			continue;
 
-		req->map[i].flush = true;
+		if (vbdev_ocf_core_is_blocked(ocf_cache_get_core(req->cache, core_id))) // 判断flush core的入口
+			continue;
+
+		req->map[i].flush = true; // 判断flush core的入口
 	}
 
 	_ocf_cleaner_fire_cache(req);
@@ -667,7 +672,7 @@ static uint32_t ocf_cleaner_populate_req(struct ocf_request *req, uint32_t curr,
 
 	for (map_curr = 0; map_curr < map_max && curr < count; curr++) {
 		if (attribs->getter(req->cache, attribs->getter_context,
-					curr, &cache_line)) {
+					curr, &cache_line)) { // 判断flush core的入口
 			continue;
 		}
 

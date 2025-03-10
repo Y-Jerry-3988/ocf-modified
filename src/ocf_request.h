@@ -500,7 +500,7 @@ static inline void ocf_req_clear_part_evict(struct ocf_request *req)
 }
 
 /**
- * @brief Check wheter request shouldn't trigger eviction from it's target
+ * @brief Check wheter request should trigger eviction from it's target
  *  partition or any partition
  *
  * @param req - OCF request

@@ -198,9 +198,9 @@ int ocf_read_generic(struct ocf_request *req)
 	req->engine_handler = _ocf_read_generic_do;
 	req->engine_cbs = &_rd_engine_callbacks;
 
-	lock = ocf_engine_prepare_clines(req);
+	lock = ocf_engine_prepare_clines(req); // 判断当前read req是否要promote，如果是promote有没有成功remap
 
-	if (!ocf_req_test_mapping_error(req)) {
+	if (!ocf_req_test_mapping_error(req)) { // 没有promote的read req、或者promote但是remap失败的read req，直接在base读，设置req->force_pt = true
 		if (lock >= 0) {
 			if (lock != OCF_LOCK_ACQUIRED) {
 				/* Lock was not acquired, need to wait for resume */
@@ -216,7 +216,7 @@ int ocf_read_generic(struct ocf_request *req)
 		}
 	} else {
 		ocf_req_clear(req);
-		req->force_pt = true; // 请求全在base中，且不需要promotion
+		req->force_pt = true; // 请求全在base中，不需要promotion、或者cache中空间满了没有成功remap
 		ocf_read_pt(req);
 	}
 

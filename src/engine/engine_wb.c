@@ -159,7 +159,7 @@ int ocf_write_wb(struct ocf_request *req)
 
 	/* TODO: Handle fits into dirty */
 
-	lock = ocf_engine_prepare_clines(req); // 这里要给写请求是否有必要直接进cache加判断
+	lock = ocf_engine_prepare_clines(req); // 这里要给写请求是否有必要直接进cache加判断，同时
 
 	if (!ocf_req_test_mapping_error(req)) {
 		if (lock >= 0) {
@@ -167,7 +167,7 @@ int ocf_write_wb(struct ocf_request *req)
 				/* WR lock was not acquired, need to wait for resume */
 				OCF_DEBUG_RQ(req, "NO LOCK");
 			} else {
-				ocf_write_wb_do(req); // 直接提交写IO进cache
+				ocf_write_wb_do(req); // 对于成功remap的write request，直接提交写IO进cache
 			}
 		} else {
 			OCF_DEBUG_RQ(req, "LOCK ERROR %d", lock);
@@ -176,7 +176,7 @@ int ocf_write_wb(struct ocf_request *req)
 		}
 	} else {
 		ocf_req_clear(req);
-		ocf_write_wi(req); // 直接写进base设备的IO
+		ocf_write_wi(req); // 进入这个入口的是ocf_engine_prepare_clines中没有被判定需要promotion的、以及想要进cache但是空间不足的write req，这些IO直接写进base设备，同时invalidate cache中的数据
 	}
 
 	/* Put OCF request - decrease reference counter */

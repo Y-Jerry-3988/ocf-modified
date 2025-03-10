@@ -737,7 +737,7 @@ static bool is_cleanup_possible(ocf_cache_t cache, struct alru_flush_ctx *fctx)
 
 	config = (void *)&cache->conf_meta->cleaning[ocf_cleaning_alru].data;
 
-	if (check_for_dirty_ratio(cache, config)) {
+	if (check_for_dirty_ratio(cache, config)) { // 这里检查的是cache下所有core总的dirty ratio
 		fctx->dirty_ratio_exceeded = true;
 		OCF_DEBUG_PARAM(cache, "Dirty ratio exceeds: %u%%",
 				config->max_dirty_ratio);
@@ -849,7 +849,7 @@ static int get_data_to_flush(struct alru_context *ctx)
 				goto end;
 			}
 
-			if (!block_is_busy(cache, cache_line)) {
+			if (!block_is_busy(cache, cache_line)) { // // 判断flush core的入口
 				get_block_to_flush(&fctx->flush_data[to_flush], cache_line,
 						cache);
 				to_flush++;
