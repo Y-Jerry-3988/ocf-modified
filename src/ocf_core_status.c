@@ -6,7 +6,7 @@
 
 // #include "spdk/bdev_module.h"
 #include "ocf_core_status.h"
-#include "vbdev_ocf.h"
+#include "module/bdev/ocf/vbdev_ocf.h"
 
 
 bool vbdev_ocf_io_is_blocked(struct ocf_request *req){

@@ -12,7 +12,7 @@
 #include "ocf/ocf_debug.h"
 #include "utils/utils_cache_line.h"
 // #include "ocf/vbdev_ocf.h"
-#include "../../ocf_core_status.h"
+#include "ocf_core_status.h"
 
 #define SEQ_CUTOFF_FULL_MARGIN 512
 /* Add seq_cut off policy: whether backend ssd blocked? */
@@ -210,7 +210,7 @@ bool ocf_core_seq_cutoff_check(ocf_core_t core, struct ocf_request *req)
 			/* Add seq_cutoff policy: whether backend ssd blocked? */
 			// 如果cache没有满，那么就要判断IO是否超过某个threshold且写IO是否被阻塞
 			if (ocf_req_is_large(req) && !vbdev_ocf_io_is_blocked(req)) // 如果large IO且bdev没有阻塞，那么可以bypass，此处不用担心read req存在dirty line in cache的问题，后面会有判断
-				break
+				break;
 			// 上述情况都不满足，只能走cache
 			/* End of modification */
 			return false;

@@ -9,7 +9,7 @@
 
 #include "ocf_request.h"
 #include "ocf_core_priv.h"
-#include "ocf_core.h"
+#include "ocf/ocf_core.h"
 
 bool vbdev_ocf_io_is_blocked(struct ocf_request *req);
 
